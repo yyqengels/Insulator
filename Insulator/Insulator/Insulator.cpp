@@ -20,12 +20,12 @@ using namespace std;
 
 vector<string> root;
 char divid[2] = { '0','1' };
-// rootGen is used to generate 64 strings 000000, 000001,...
+// rootGen is used to generate 64 strings 000000, 000001, ..., 111111.
 void rootGen(string res = "", int k = 0)
 {
-	if (k != 0)	root.push_back(res);
 	if (k == 6)
 	{
+		root.push_back(res);
 		return;
 	}
 	for (int i = 0; i < 2; i++)
@@ -165,15 +165,20 @@ bool checkExcept(char*where, vector<string> exceptBox)
 
  //check if one of the candidate conditions can kill where
  //and sort the candidate conditions based on their ``usefulness"
-bool checkInequal(vector <killFun> conList, char*where, int depth)
+bool checkInequal(vector <killFun> conList, char*where, int depth, bool newCon = false)
 {
 	int i = 0;
 	while (i < int(conList.size()))
 	{
 		string temp = conList[i].words;
-		if (i >= 6)
+		if (newCon)
+		{
+			temp.insert(temp.begin() + 1, '(');
+			temp.insert(temp.end(), ')');
+		}
+		else if (i >= 6)
 		{// skip the first six conditions: trival conditions
-			// add left and right paranthesis to conList[i].second
+			// add left and right paranthesis to temp
 			temp.insert(temp.begin() + 1, '(');
 			temp.insert(temp.end(), ')');
 		}
@@ -220,9 +225,7 @@ bool checkInequal(vector <killFun> conList, char*where, int depth)
 	}
 	return false;
 }
-
-int maxDepth = 200;
-
+//////////////////////////
 struct node
 {
 	char *where;
@@ -231,44 +234,54 @@ struct node
 	node *left = NULL;
 	node *right = NULL;
 };
+int maxDepth = 200;
 
+vector<char*> failBox;
 
 bool dividBox(node *subBox, int depth, vector<string> exceptBox)//true means killed, false means not killed
 {
 	// First, check if depth is too deep
 	if (depth == maxDepth)
 	{
+		failBox.push_back(subBox->where);
 		fprintf(stderr, "verify: fatal error at %s\n", subBox->where);
 		exit(1);
 	}
-	// Then check if its parent is killed.
-	if (((subBox->parent)->killIndex) == 1)
+	// If it has a parent, 
+	// then check if its parent is killed.
+	if (subBox->parent != NULL)
 	{
-		return true;
+		if (((subBox->parent)->killIndex) == 1)
+		{
+			subBox->killIndex = 1;
+			return true;
+		}
 	}
 	// If its parent is not killed 
 	// then first check if it is one of the 11 regions
 	if (checkExcept(subBox->where, exceptBox))
 	{
+		subBox->killIndex = 1;
 		cout << "Find exceptional sub-box" << (subBox->where) << endl;
 		return true;
 	}// if not, then check if it can be killed by one of the conditions
 	else if (checkInequal(conList,subBox->where, depth))
 	{
+		subBox->killIndex = 1;
 		cout << "Killed" << subBox->where << endl;
 		return true;
 	}
 	else {// if every inequalityHold returns 0
-		  //then add a surfix to conditions that have been used 
+		  //then add one suffix to conditions that have been used 
 		vector<killFun> newConList;
-		for (int i = 6; i < conList.size(); i++)
+		for (int i = 6; i < int(conList.size()); i++)
 		{
 			if (conList[i].numUsed != 0)
 			{
 				funGen(conList[i].words, K-1,true);
 			}
 		}
-		// use new condition to check the current sub-box and its 6 parents
+		// use new conditions to check the current sub-box and its 6 parents
 		if (depth > 12)
 		{
 			vector<node*> tempBox;
@@ -280,7 +293,7 @@ bool dividBox(node *subBox, int depth, vector<string> exceptBox)//true means kil
 			int i = 6;
 			while (i >= 0)
 			{
-				if (checkInequal(newConList,(tempBox[i])->where, depth - i))
+				if (checkInequal(newConList,(tempBox[i])->where, depth - i, true))
 				{
 					(tempBox[i])->killIndex = 1;
 					//kill all the descendents
@@ -294,7 +307,7 @@ bool dividBox(node *subBox, int depth, vector<string> exceptBox)//true means kil
 				i--;
 			}
 		}
-		for (int i = 0; i < newConList.size(); i++)
+		for (int i = 0; i < int(newConList.size()); i++)
 		{
 			conList.push_back(newConList[i]);
 		}
@@ -310,8 +323,7 @@ bool dividBox(node *subBox, int depth, vector<string> exceptBox)//true means kil
 		dividBox(subBox->left, depth + 1, exceptBox);
 		// right child
 		subBox->right = new node;
-		string temp = string(subBox->where);
-		temp += '1';
+		temp[temp.size() - 1] = '1';
 		subBox->right->where = &temp[0];
 		subBox->right->parent = subBox;
 		dividBox(subBox->right, depth + 1, exceptBox);
@@ -356,6 +368,17 @@ int main()
 		node *box;
 		box->where = &root[i][0];
 		dividBox(box, root[i].size(), exceptBox);
+	}
+	if (failBox.size() == 0)
+	{
+		cout << "Killed the whole space" << endl;
+	}
+	else
+	{
+		for (int i = 0; i < int(failBox.size()); i++)
+		{
+			cout << failBox[i] << endl;
+		}
 	}
 	return 0;
 }
