@@ -20,6 +20,7 @@ using namespace std;
 
 vector<string> root;
 char divid[2] = { '0','1' };
+// rootGen is used to generate 64 strings 000000, 000001,...
 void rootGen(string res = "", int k = 0)
 {
 	if (k != 0)	root.push_back(res);
@@ -58,8 +59,7 @@ struct killFun
 // Define the function to compare two killFuns
 // first sort by the number of times these two functions used 
 // second sort by the length of the functions
-// finally sort by the length of the the translations
-
+// finally sort by the length of the the translation
 bool compare_entry(const killFun & e1, const killFun & e2) {
 	if (e1.numUsed != e2.numUsed)
 	{// sort in descending order
@@ -75,6 +75,7 @@ bool compare_entry(const killFun & e1, const killFun & e2) {
 vector <killFun> conList;
 vector<killFun> newConList;
 // funGen is used to generate all the killerwords with length less than or equal to K
+// if newCon is true, then generated killerwords are put in newConList 
 void funGen(string res, int k, bool newCon = false)
 {
 	killFun tempKill;
@@ -112,7 +113,7 @@ void funGen(string res, int k, bool newCon = false)
 		for (int i = 0; i < newN; i++)
 		{
 			res += newarr[i];
-			funGen(res, k + 1);
+			funGen(res, k + 1, newCon);
 			res.erase(res.end() - 1);
 		}
 	}
@@ -125,7 +126,7 @@ void funGen(string res, int k, bool newCon = false)
 			for (int i = 0; i < newN; i++)
 			{
 				res += newarr[i];
-				funGen(res, k + 1);
+				funGen(res, k + 1, newCon);
 				res.erase(res.end() - 1);
 			}
 			res.erase(res.end() - 1);
@@ -267,11 +268,10 @@ bool dividBox(node *subBox, int depth, vector<string> exceptBox)//true means kil
 				funGen(conList[i].words, K-1,true);
 			}
 		}
-
 		// use new condition to check the current sub-box and its 6 parents
 		if (depth > 12)
 		{
-			vector<node> tempBox;
+			vector<node*> tempBox;
 			tempBox.push_back(subBox);
 			for (int i = 1; i <= 6; i++)
 			{
@@ -357,6 +357,5 @@ int main()
 		box->where = &root[i][0];
 		dividBox(box, root[i].size(), exceptBox);
 	}
-
 	return 0;
 }
